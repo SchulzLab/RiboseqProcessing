@@ -38,9 +38,6 @@ meta_stat_breast_cancer_data_dir="/projects/splitorfs/work/Riboseq/data/cancer_d
 glioblastoma_data_dir="/projects/splitorfs/work/Riboseq/data/cancer_data_riboseq_org/glioblastoma_PRJNA591767/fastq"
 breast_cancer_data_dir="/projects/splitorfs/work/Riboseq/data/cancer_data_riboseq_org/breast_cancer_PRJNA523167/fastq"
 
-heart_dir="/projects/splitorfs/work/Riboseq/data/heart_iPSC/fastq"
-leukemia_dir="/projects/splitorfs/work/Riboseq/data/leukemia/fastq"
-endothel_dir="/projects/splitorfs/work/Riboseq/data/endothel_Siragusa/fastq_from_bam"
 
 out_dir="/projects/splitorfs/work/Riboseq/data"
 
@@ -54,17 +51,8 @@ echo "$out_dir"
 # -i "$meta_stat_breast_cancer_data_dir" -o "$out_dir" \
 # -c AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -f 5 -m "${module_dir}"
 
-# bash "${module_dir}"/Riboseq_pipeline.sh -i "$glioblastoma_data_dir" \
-# -o "$out_dir" -c AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -m "${module_dir}"
+bash "${module_dir}"/Riboseq_pipeline.sh -i "$glioblastoma_data_dir" \
+-o "$out_dir" -c AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -m "${module_dir}"
 
 bash "${module_dir}"/Riboseq_pipeline.sh -i "$breast_cancer_data_dir" \
  -o "$out_dir" -c CTGTAGGCACCATCAAT -m "${module_dir}"
-
-# bash "${module_dir}"/Riboseq_pipeline.sh -i "$heart_dir" \
-# -o "$out_dir" -c AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -m "${module_dir}"
-
-# bash "${module_dir}"/Riboseq_pipeline.sh -i "$leukemia_dir" \
-# -o "$out_dir" -c AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -m "${module_dir}"
-
-# bash "${module_dir}"/Riboseq_pipeline.sh -i "$endothel_dir" \
-# -o "$out_dir" -c AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -m "${module_dir}"
