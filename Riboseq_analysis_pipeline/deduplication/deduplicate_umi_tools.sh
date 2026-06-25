@@ -20,6 +20,7 @@ if [[ "$align_type" == "transcriptomic" ]]; then
 else
     echo $align_type
     files=("${umi_indir}"/*.bam)
+    echo "${files[@]}"
     parallel=false
 fi
 
@@ -64,29 +65,74 @@ else
     for bam in "${files[@]}"
     do
 
-            filename=$(basename "$bam")
-            # are the bamfiles genome or transcriptome aligned
-            # remove respective suffix to get the sample name
-            if [[ "$filename" == *.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam ]]; then
-                sample=${filename%.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam}
-            elif [[ "$filename" == *_Aligned.sortedByCoord.out.bam ]]; then
-                sample=${filename%_Aligned.sortedByCoord.out.bam}
-            fi
+        job_count=0
+
+        for bam in "${files[@]}"; do
+                filename=$(basename "$bam")
+
+                if [[ "$filename" == *.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam ]]; then
+                    sample=${filename%.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam}
+                elif [[ "$filename" == *_Aligned.sortedByCoord.out.bam ]]; then
+                    sample=${filename%_Aligned.sortedByCoord.out.bam}
+                elif [[ "$filename" == *.cutadapt_umi_fastp.Ens_110_Aligned.sortedByCoord.out_sorted.bam ]]; then
+                    sample=${filename%.cutadapt_umi_fastp.Ens_110_Aligned.sortedByCoord.out_sorted.bam}
+                else
+                    echo "ERROR: unrecognized filename pattern: $filename" >&2
+                    continue
+                fi
+
+                echo "$sample"
+
+                (
+                    umi_tools dedup \
+                        --stdin=${bam} \
+                        --log="${umi_dedup_outdir}/${sample}_LOGFILE" \
+                        --output-stats="${umi_dedup_outdir}/${sample}_outstats" \
+                        > "${umi_dedup_outdir}/${sample}_dedup.bam"
+
+                    samtools index "${umi_dedup_outdir}/${sample}_dedup.bam"
+
+                    samtools flagstat "${umi_dedup_outdir}/${sample}_dedup.bam" \
+                        > "${umi_dedup_outdir}/${sample}_dedup_flagstat.out"
+
+                    samtools idxstats "${umi_dedup_outdir}/${sample}_dedup.bam" \
+                        > "${umi_dedup_outdir}/${sample}.dedup_idxstats.out"
+                ) &
+
+                (( job_count++ ))
+                if (( job_count % 3 == 0 )); then
+                    wait
+                fi
+
+        done
+
+        wait  # catch any remaining jobs (e.g. if total files not divisible by 3)
+
+            # filename=$(basename "$bam")
+            # # are the bamfiles genome or transcriptome aligned
+            # # remove respective suffix to get the sample name
+            # if [[ "$filename" == *.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam ]]; then
+            #     sample=${filename%.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam}
+            # elif [[ "$filename" == *_Aligned.sortedByCoord.out.bam ]]; then
+            #     sample=${filename%_Aligned.sortedByCoord.out.bam}
+            # else
+            #     sample=${filename%.cutadapt_umi_fastp.Ens_110_Aligned.sortedByCoord.out_sorted.bam}
+            # fi
             
-            echo $sample
-            umi_tools dedup \
-            --stdin=${bam} \
-            --log="${umi_dedup_outdir}"/${sample}_LOGFILE \
-            --output-stats="${umi_dedup_outdir}"/${sample}_outstats \
-                > "${umi_dedup_outdir}"/${sample}_dedup.bam
+            # echo $sample
+            # umi_tools dedup \
+            # --stdin=${bam} \
+            # --log="${umi_dedup_outdir}"/${sample}_LOGFILE \
+            # --output-stats="${umi_dedup_outdir}"/${sample}_outstats \
+            #     > "${umi_dedup_outdir}"/${sample}_dedup.bam
 
-            samtools index "${umi_dedup_outdir}"/${sample}_dedup.bam
+            # samtools index "${umi_dedup_outdir}"/${sample}_dedup.bam
 
-            samtools flagstat "${umi_dedup_outdir}"/${sample}_dedup.bam > \
-            "${umi_dedup_outdir}"/"${sample}"_dedup_flagstat.out
+            # samtools flagstat "${umi_dedup_outdir}"/${sample}_dedup.bam > \
+            # "${umi_dedup_outdir}"/"${sample}"_dedup_flagstat.out
 
-            samtools idxstats  "${umi_dedup_outdir}"/${sample}_dedup.bam > \
-            "${umi_dedup_outdir}"/"${sample}".dedup_idxstats.out
+            # samtools idxstats  "${umi_dedup_outdir}"/${sample}_dedup.bam > \
+            # "${umi_dedup_outdir}"/"${sample}".dedup_idxstats.out
     done
 fi
 
