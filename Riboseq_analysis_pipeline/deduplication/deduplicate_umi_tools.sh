@@ -77,8 +77,7 @@ else
                 elif [[ "$filename" == *.cutadapt_umi_fastp.Ens_110_Aligned.sortedByCoord.out_sorted.bam ]]; then
                     sample=${filename%.cutadapt_umi_fastp.Ens_110_Aligned.sortedByCoord.out_sorted.bam}
                 else
-                    echo "ERROR: unrecognized filename pattern: $filename" >&2
-                    continue
+                    sample=${filename%.bam}
                 fi
 
                 echo "$sample"
