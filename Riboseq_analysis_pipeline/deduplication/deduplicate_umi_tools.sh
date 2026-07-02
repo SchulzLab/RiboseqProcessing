@@ -62,50 +62,51 @@ if [[ "${parallel}" == true ]]; then
 
     wait
 else
-    for bam in "${files[@]}"
-    do
+    job_count=0
+    for bam in "${files[@]}"; do
+        filename=$(basename "$bam")
 
-        job_count=0
+        if [[ "$filename" == *.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam ]]; then
+            sample=${filename%.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam}
+        elif [[ "$filename" == *_Aligned.sortedByCoord.out.bam ]]; then
+            sample=${filename%_Aligned.sortedByCoord.out.bam}
+        elif [[ "$filename" == *.cutadapt_umi_fastp.Ens_110_Aligned.sortedByCoord.out_sorted.bam ]]; then
+            sample=${filename%.cutadapt_umi_fastp.Ens_110_Aligned.sortedByCoord.out_sorted.bam}
+        else
+            sample=${filename%.bam}
+        fi
 
-        for bam in "${files[@]}"; do
-                filename=$(basename "$bam")
+        echo "$sample"
 
-                if [[ "$filename" == *.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam ]]; then
-                    sample=${filename%.cutadapt_umi_fastp.only_R1_Aligned.sortedByCoord.out.bam}
-                elif [[ "$filename" == *_Aligned.sortedByCoord.out.bam ]]; then
-                    sample=${filename%_Aligned.sortedByCoord.out.bam}
-                elif [[ "$filename" == *.cutadapt_umi_fastp.Ens_110_Aligned.sortedByCoord.out_sorted.bam ]]; then
-                    sample=${filename%.cutadapt_umi_fastp.Ens_110_Aligned.sortedByCoord.out_sorted.bam}
-                else
-                    sample=${filename%.bam}
-                fi
+        if [[ -s "${umi_dedup_outdir}/${sample}_dedup.bam" ]]; then
+            echo "Skipping ${sample}, dedup.bam already exists and is non-empty"
+        else
+            (
+                umi_tools dedup \
+                    --stdin=${bam} \
+                    --log="${umi_dedup_outdir}/${sample}_LOGFILE" \
+                    --output-stats="${umi_dedup_outdir}/${sample}_outstats" \
+                    > "${umi_dedup_outdir}/${sample}_dedup.bam"
 
-                echo "$sample"
+                samtools index "${umi_dedup_outdir}/${sample}_dedup.bam"
 
-                (
-                    umi_tools dedup \
-                        --stdin=${bam} \
-                        --log="${umi_dedup_outdir}/${sample}_LOGFILE" \
-                        --output-stats="${umi_dedup_outdir}/${sample}_outstats" \
-                        > "${umi_dedup_outdir}/${sample}_dedup.bam"
+                samtools flagstat "${umi_dedup_outdir}/${sample}_dedup.bam" \
+                    > "${umi_dedup_outdir}/${sample}_dedup_flagstat.out"
 
-                    samtools index "${umi_dedup_outdir}/${sample}_dedup.bam"
+                samtools idxstats "${umi_dedup_outdir}/${sample}_dedup.bam" \
+                    > "${umi_dedup_outdir}/${sample}.dedup_idxstats.out"
+            ) &
 
-                    samtools flagstat "${umi_dedup_outdir}/${sample}_dedup.bam" \
-                        > "${umi_dedup_outdir}/${sample}_dedup_flagstat.out"
+            (( job_count++ ))
+            if (( job_count % 3 == 0 )); then
+                wait
+            fi
 
-                    samtools idxstats "${umi_dedup_outdir}/${sample}_dedup.bam" \
-                        > "${umi_dedup_outdir}/${sample}.dedup_idxstats.out"
-                ) &
+        fi
 
-                (( job_count++ ))
-                if (( job_count % 3 == 0 )); then
-                    wait
-                fi
+    done
 
-        done
-
-        wait  # catch any remaining jobs (e.g. if total files not divisible by 3)
+    wait  # catch any remaining jobs (e.g. if total files not divisible by 3)
 
             # filename=$(basename "$bam")
             # # are the bamfiles genome or transcriptome aligned
@@ -132,7 +133,6 @@ else
 
             # samtools idxstats  "${umi_dedup_outdir}"/${sample}_dedup.bam > \
             # "${umi_dedup_outdir}"/"${sample}".dedup_idxstats.out
-    done
 fi
 
 if [[ "$align_type" == "transcriptomic" ]]; then
