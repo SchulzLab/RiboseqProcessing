@@ -71,10 +71,6 @@ if [ ! -d ${output_star} ]; then
     mkdir ${output_star}
 fi
 
-if [ ! -d "${output_star}/filtered_q10" ]; then
-    mkdir "${output_star}/filtered_q10"
-fi
-
 if [[ "$index" == true ]]; then
     STAR --runThreadN 50 --runMode genomeGenerate --genomeDir $star_index --genomeFastaFiles ${genome_fasta}\
     --sjdbGTFfile $annotation_gtf --sjdbOverhang 49
