@@ -317,10 +317,11 @@ fi
 ################################################################################
 # GENOMIC ALIGNMENT                                                            #
 ################################################################################
-# star_index="/projects/splitorfs/work/Riboseq/Output/Michi_Vlado_round_1/alignment_genome/STAR/index"
+
 if [[ $genomic == true && $dedup == true && $soft_clip == true && $paired_reads == true ]]; then
     genome_align_dir="${outdir}/alignment_genome"
     mkdir -p "${genome_align_dir}"
+    mkdir -p "${genome_align_dir}/STAR"
     output_star="${genome_align_dir}/STAR/only_R1"
     bash "${module_dir}"/alignments/genome_alignment_star.sh -o ${output_star} -f ${indir} -s "${alignment_index_star}" \
     -a $gtf -g $genome_fasta -i -m Extend5pOfRead1 -e only_R1_
@@ -339,31 +340,32 @@ elif [[ $genomic == true && $dedup == true ]]; then
     mkdir -p "${genome_align_dir_filtered}"
 
     
-    # echo $gtf $indir $genome_fasta $output_star "${alignment_index_star}"
-    # bash "${module_dir}"/alignments/genome_alignment_star.sh -a $gtf -e "Ens_110_" -f ${indir} \
-    # -g $genome_fasta -m EndToEnd -o ${output_star} -s "${alignment_index_star}" # -i
+    echo $gtf $indir $genome_fasta $output_star "${alignment_index_star}"
+    bash "${module_dir}"/alignments/genome_alignment_star.sh -a $gtf -e "Ens_110_" -f ${indir} \
+    -g $genome_fasta -m EndToEnd -o ${output_star} -s "${alignment_index_star}" #-i
 
-    # python "${module_dir}"/alignments/analyze_mappings/analyze_STAR_alignments.py \
-    # ${output_star} \
-    # STAR_align_Ribo_genome.csv
+    python "${module_dir}"/alignments/analyze_mappings/analyze_STAR_alignments.py \
+    ${output_star} \
+    STAR_align_Ribo_genome.csv
 
     # filter out secondary and suppl alignments
-    # files=("${output_star}"/*.bam)
+    files=("${output_star}"/*.bam)
 
-    # for bam in "${files[@]}"
-    # do
-    #     samtools view -F 256 -F 2048 -b ${bam} > \
-    #         "${genome_align_dir_filtered}"/$(basename $bam .bam)_filtered.bam
+    for bam in "${files[@]}"
+    do
+        if [[ ! -e "${genome_align_dir_filtered}"/$(basename $bam .bam)_sorted.bam ]]; then
+            samtools view -F 256 -F 2048 -b ${bam} > \
+                "${genome_align_dir_filtered}"/$(basename $bam .bam)_filtered.bam
 
 
-    #     samtools sort "${genome_align_dir_filtered}"/$(basename $bam .bam)_filtered.bam \
-    #     -o "${genome_align_dir_filtered}"/$(basename $bam .bam)_sorted.bam
+            samtools sort "${genome_align_dir_filtered}"/$(basename $bam .bam)_filtered.bam \
+            -o "${genome_align_dir_filtered}"/$(basename $bam .bam)_sorted.bam
 
-    #     samtools index "${genome_align_dir_filtered}"/$(basename $bam .bam)_sorted.bam
+            samtools index "${genome_align_dir_filtered}"/$(basename $bam .bam)_sorted.bam
 
-    #     rm  "${genome_align_dir_filtered}"/*_filtered.bam
-        
-    # done
+            rm  "${genome_align_dir_filtered}"/*_filtered.bam
+        fi
+    done
      
     umi_dedup_outdir="${genome_align_dir_filtered}/deduplicated"
     mkdir -p "${umi_dedup_outdir}"
@@ -377,28 +379,31 @@ elif [[ $genomic == true && $dedup == true ]]; then
 
     # filter out secondary and suppl alignments
     FILES=("${umi_dedup_outdir}"/*_dedup.bam)
+    echo "${FILES[@]}"
 
     for BAM in "${FILES[@]}"
     do
-        samtools view -F 256 -F 2048 -q 10 -b ${BAM} > \
-         "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam
+        if [[ ! -e "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam ]]; then
+            samtools view -F 256 -F 2048 -q 10 -b ${BAM} > \
+            "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam
 
-        samtools index "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam
+            samtools index "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam
 
-         samtools idxstats "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam > \
-        "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered_idxstats.out
+            samtools idxstats "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam > \
+            "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered_idxstats.out
 
-        samtools stats "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam > \
-        "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered_stats.out
+            samtools stats "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam > \
+            "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered_stats.out
 
-        samtools flagstat "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam > \
-        "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered_flagstat.out
-
+            samtools flagstat "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered.bam > \
+            "${umi_dedup_outdir}"/$(basename $BAM .bam)_filtered_flagstat.out
+        fi
     done
 
     # remove all unfiltered .bam files
     rm "${umi_dedup_outdir}"/*dedup.bam
 
+    conda activate r-env
     # run FeatureCounts to get mapping percentages
     Rscript "${module_dir}"/alignments/analyze_mappings/genome_aligned_reads_biotype_counting.R \
     "$umi_dedup_outdir"

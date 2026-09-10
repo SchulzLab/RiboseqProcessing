@@ -321,10 +321,13 @@ fi
 if [[ $genomic == true && $dedup == true && $soft_clip == true && $paired_reads == true ]]; then
     genome_align_dir="${outdir}/alignment_genome"
     mkdir -p "${genome_align_dir}"
+    mkdir -p "${genome_align_dir}/STAR"
     output_star="${genome_align_dir}/STAR/only_R1"
     bash "${module_dir}"/alignments/genome_alignment_star.sh -o ${output_star} -f ${indir} -s "${alignment_index_star}" \
     -a $gtf -g $genome_fasta -i -m Extend5pOfRead1 -e only_R1_
 
+    genome_align_dir_filtered="${output_star}/filtered"
+    mkdir -p "$genome_align_dir_filtered"
 
     python "${module_dir}"/alignments/analyze_mappings/analyze_STAR_alignments.py \
         ${output_star} \
