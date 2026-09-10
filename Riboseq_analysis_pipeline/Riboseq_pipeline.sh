@@ -326,6 +326,8 @@ if [[ $genomic == true && $dedup == true && $soft_clip == true && $paired_reads 
     bash "${module_dir}"/alignments/genome_alignment_star.sh -o ${output_star} -f ${indir} -s "${alignment_index_star}" \
     -a $gtf -g $genome_fasta -i -m Extend5pOfRead1 -e only_R1_
 
+    genome_align_dir_filtered="${output_star}/filtered"
+    mkdir -p "$genome_align_dir_filtered"
 
     python "${module_dir}"/alignments/analyze_mappings/analyze_STAR_alignments.py \
         ${output_star} \
@@ -342,12 +344,15 @@ elif [[ $genomic == true && $dedup == true ]]; then
     
     echo $gtf $indir $genome_fasta $output_star "${alignment_index_star}"
     bash "${module_dir}"/alignments/genome_alignment_star.sh -a $gtf -e "Ens_110_" -f ${indir} \
-    -g $genome_fasta -m EndToEnd -o ${output_star} -s "${alignment_index_star}" #-i
+    -g $genome_fasta -m EndToEnd -o ${output_star} -s "${alignment_index_star}" # -i
 
     python "${module_dir}"/alignments/analyze_mappings/analyze_STAR_alignments.py \
     ${output_star} \
     STAR_align_Ribo_genome.csv
+fi
 
+# filtering and deduplication need to be run for everything, soft clip and normal!!!
+if [[ $genomic == true && $dedup == true ]]; then
     # filter out secondary and suppl alignments
     files=("${output_star}"/*.bam)
 
